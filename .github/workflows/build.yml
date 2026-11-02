@@ -212,9 +212,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: packages-raw-${{ matrix.version }}-${{ github.run_number }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.SOURCE_DIR }}/bin/packages/aarch64_cortex-a53/**/*.ipk
-            ${{ env.SOURCE_DIR }}/bin/targets/**/kmods/**/*.ipk
+          path: ${{ env.SOURCE_DIR }}/bin/**/*.ipk
           if-no-files-found: ignore
           retention-days: 30
 
