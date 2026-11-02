@@ -168,6 +168,18 @@ jobs:
           mkdir -p artifacts/logs
           python3 scripts/build-info.py "$SOURCE_DIR" artifacts --release "$SERIES" 2>&1 | tee artifacts/logs/metadata.log
 
+      - name: Upload raw firmware images (safety net)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: raw-firmware-${{ matrix.version }}-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.TARGET_DIR }}/*squashfs-sysupgrade.bin
+            ${{ env.TARGET_DIR }}/*squashfs-factory.bin
+          if-no-files-found: ignore
+          compression-level: 0
+          retention-days: 30
+
       - name: Verify firmware and complete package feed, then stage release attachments
         env:
           MINIMAL_BUILD: ${{ inputs.minimal || '1' }}
