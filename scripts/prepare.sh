@@ -97,10 +97,15 @@ checkout_locked "${SOURCES[2]}" "${SOURCES[3]}" package/luci-theme-argon
 FFMPEG_MK="$SOURCE_DIR/feeds/packages/multimedia/ffmpeg/Makefile"
 if [ -f "$FFMPEG_MK" ]; then
     sed -i 's/ifneq (\$(CONFIG_FFMPEG_CUSTOM_PROGRAMS),y)/ifeq (nevermatch,nevermatch)/' "$FFMPEG_MK"
-    if grep -q 'ifeq (nevermatch,nevermatch)' "$FFMPEG_MK"; then
-        echo "patched ffmpeg Makefile: programs 不再被禁用"
+    # 即使去掉 --disable-programs，custom 变体仍不产生 usr/bin/ffprobe。
+    # 打包规则无条件 cp 该文件必然失败，因此加 "-" 前缀让 make 忽略缺失
+    # （产物是空的 ffmpeg/ffprobe 包，路由器上本来也不需要它们）。
+    sed -i 's|^\t\$(CP) \$(PKG_INSTALL_DIR)/usr/bin/ffprobe |\t-\$(CP) \$(PKG_INSTALL_DIR)/usr/bin/ffprobe |' "$FFMPEG_MK"
+    sed -i 's|^\t\$(CP) \$(PKG_INSTALL_DIR)/usr/bin/ffmpeg |\t-\$(CP) \$(PKG_INSTALL_DIR)/usr/bin/ffmpeg |' "$FFMPEG_MK"
+    if grep -q 'ifeq (nevermatch,nevermatch)' "$FFMPEG_MK" && grep -q '^\t-\$(CP) \$(PKG_INSTALL_DIR)/usr/bin/ffprobe' "$FFMPEG_MK"; then
+        echo "patched ffmpeg Makefile: programs 放开 + 缺失二进制容错"
     else
-        echo "WARNING: ffmpeg Makefile patch 未命中" >&2
+        echo "WARNING: ffmpeg Makefile patch 未完全命中" >&2
     fi
 fi
 
