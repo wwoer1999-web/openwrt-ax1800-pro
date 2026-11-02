@@ -61,10 +61,15 @@ def collect(directory, output, build_info, series=DEFAULT_RELEASE,
             if Path(package_archive).name != package_archive or not package_archive.endswith(".tar.zst"):
                 raise ValueError("Expected a local .tar.zst package archive name")
             collect_packages(Path(package_source), staging / package_archive, inventory)
-            shutil.copyfile(Path(package_source) / package_feed.PLAN, staging / package_feed.PLAN)
-            shutil.copyfile(Path(package_source) / package_feed.INVENTORY,
-                            staging / package_feed.INVENTORY)
-            names += [package_archive, package_feed.PLAN, package_feed.INVENTORY]
+            extras = []
+            for meta in (package_feed.PLAN, package_feed.INVENTORY):
+                source_meta = Path(package_source) / meta
+                if source_meta.is_file():
+                    shutil.copyfile(source_meta, staging / meta)
+                    extras.append(meta)
+                else:
+                    print(f"跳过缺失的 {meta}（最小模式不生成全量清单元数据）")
+            names += [package_archive, *extras]
         sums = "".join(f"{firmware.sha256(staging / name)}  {name}\n"
                        for name in sorted(names + ["build-info.json"]))
         (staging / "SHA256SUMS").write_text(sums, encoding="utf-8", newline="\n")
