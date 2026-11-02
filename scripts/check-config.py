@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Reject lost device selections, missing runtime packages, or NSS offload."""
 import argparse
+import os
 from pathlib import Path
 import re
 import sys
@@ -26,6 +27,11 @@ REQUIRED = {
     "CONFIG_ALL_KMODS", "CONFIG_ALL_NONSHARED",
     *(f"CONFIG_PACKAGE_{package}" for package in PACKAGES),
 }
+
+
+# 最小模式（只编固件 + 指定包）不要求全量展开，这两个开关允许缺省
+if os.environ.get("MINIMAL_BUILD") == "1":
+    REQUIRED -= {"CONFIG_ALL_KMODS", "CONFIG_ALL_NONSHARED"}
 
 
 def is_offload_package(name):

@@ -109,7 +109,13 @@ if [ -f "$FFMPEG_MK" ]; then
     fi
 fi
 
-cat -- "${CONFIGS[@]}" > .config
+if [ "${MINIMAL_BUILD:-0}" = "1" ]; then
+    # 最小模式：只编固件 + 明确列出的包/kmod，不再全量展开三千个软件包
+    cat -- "${CONFIGS[@]}" | grep -vE '^CONFIG_ALL_(KMODS|NONSHARED)=y' > .config
+    echo "MINIMAL_BUILD=1：已关闭 ALL_KMODS / ALL_NONSHARED"
+else
+    cat -- "${CONFIGS[@]}" > .config
+fi
 # OpenWrt merges this after target configs; its m+ merge keeps these y values
 # when package metadata requests the same kernel features as modules.
 mkdir -p env
@@ -121,9 +127,15 @@ make defconfig
 
 # ALL_KMODS/ALL_NONSHARED already selected eligible packages as m. Compare the
 # shared feed metadata with official release indexes to catch unpublished apps.
-python3 "$PROJECT_DIR/scripts/package-feed.py" select "$SOURCE_DIR" --release "$RELEASE"
+if [ "${MINIMAL_BUILD:-0}" = "1" ]; then
+    echo "MINIMAL_BUILD=1：跳过 package-feed 全量校验"
+else
+    python3 "$PROJECT_DIR/scripts/package-feed.py" select "$SOURCE_DIR" --release "$RELEASE"
+fi
 make defconfig
-python3 "$PROJECT_DIR/scripts/package-feed.py" plan "$SOURCE_DIR" --release "$RELEASE"
+if [ "${MINIMAL_BUILD:-0}" != "1" ]; then
+    python3 "$PROJECT_DIR/scripts/package-feed.py" plan "$SOURCE_DIR" --release "$RELEASE"
+fi
 python3 "$PROJECT_DIR/scripts/check-config.py" .config --release "$RELEASE"
 
 echo "OpenWrt $RELEASE source ready: $SOURCE_DIR"

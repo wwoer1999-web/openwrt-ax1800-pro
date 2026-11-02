@@ -23,6 +23,11 @@ on:
         type: choice
         default: auto
         options: [auto, '2', '3', '4', '8']
+      minimal:
+        description: '只编固件+选定 kmod（跳过全量软件包）'
+        type: choice
+        default: '1'
+        options: ['1', '0']
 
 permissions:
   contents: read
@@ -103,6 +108,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends zstd
 
       - name: Prepare isolated source tree
+        env:
+          MINIMAL_BUILD: ${{ inputs.minimal || '1' }}
         run: |
           mkdir -p artifacts/logs
           bash scripts/prepare.sh "$SOURCE_DIR" --release "$SERIES" 2>&1 | tee artifacts/logs/prepare.log
@@ -162,6 +169,8 @@ jobs:
           python3 scripts/build-info.py "$SOURCE_DIR" artifacts --release "$SERIES" 2>&1 | tee artifacts/logs/metadata.log
 
       - name: Verify firmware and complete package feed, then stage release attachments
+        env:
+          MINIMAL_BUILD: ${{ inputs.minimal || '1' }}
         run: |
           python3 scripts/check-config.py "$SOURCE_DIR/.config" --release "$SERIES"
           python3 scripts/check-kernel.py "$SOURCE_DIR" --release "$SERIES"
