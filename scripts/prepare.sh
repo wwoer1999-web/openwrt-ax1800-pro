@@ -90,6 +90,20 @@ done
 ./scripts/feeds install -a
 checkout_locked "${SOURCES[2]}" "${SOURCES[3]}" package/luci-theme-argon
 
+# ALL_NONSHARED 会强制构建 ffmpeg-custom / ffprobe-custom，但该变体的 configure 带
+# --disable-programs（因为 CONFIG_FFMPEG_CUSTOM_PROGRAMS 在 Kconfig 里不可见、恒为 n），
+# 而 Package/ffprobe/install 仍无条件 cp usr/bin/ffprobe，导致打包阶段必然失败。
+# 这里直接把那个条件块改成永不成立，让 ffmpeg 正常编译出 ffprobe 二进制。
+FFMPEG_MK="$SOURCE_DIR/feeds/packages/multimedia/ffmpeg/Makefile"
+if [ -f "$FFMPEG_MK" ]; then
+    sed -i 's/ifneq (\$(CONFIG_FFMPEG_CUSTOM_PROGRAMS),y)/ifeq (nevermatch,nevermatch)/' "$FFMPEG_MK"
+    if grep -q 'ifeq (nevermatch,nevermatch)' "$FFMPEG_MK"; then
+        echo "patched ffmpeg Makefile: programs 不再被禁用"
+    else
+        echo "WARNING: ffmpeg Makefile patch 未命中" >&2
+    fi
+fi
+
 cat -- "${CONFIGS[@]}" > .config
 # OpenWrt merges this after target configs; its m+ merge keeps these y values
 # when package metadata requests the same kernel features as modules.
