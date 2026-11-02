@@ -94,7 +94,11 @@ def collect_packages(source, output, inventory):
                 archive.dereference = True
                 archive.add(path, relative, recursive=False)
             for name in (package_feed.PLAN, package_feed.INVENTORY):
-                archive.add(source / name, name, recursive=False)
+                meta = source / name
+                if meta.is_file():
+                    archive.add(meta, name, recursive=False)
+                else:
+                    print(f"跳过缺失的 {name}（最小模式不生成全量清单）")
         try:
             subprocess.run(["zstd", "-q", "-f", "-19", str(tar_path), "-o", str(output)],
                            check=True)
