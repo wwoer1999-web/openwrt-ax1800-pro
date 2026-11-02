@@ -187,9 +187,15 @@ jobs:
           python3 scripts/check-config.py "$SOURCE_DIR/.config" --release "$SERIES"
           python3 scripts/check-kernel.py "$SOURCE_DIR" --release "$SERIES"
           python3 scripts/check-firmware.py "$TARGET_DIR" --release "$SERIES"
-          python3 scripts/collect-release.py "$TARGET_DIR" artifacts/release --release "$SERIES" --build-info artifacts/build-info.json \
-            --package-source "$SOURCE_DIR" \
-            --package-archive "openwrt-${VERSION}-${SERIES}-packages.tar.zst"
+          if [ "${MINIMAL_BUILD}" = "1" ]; then
+            # 最小模式不生成全量包清单，只发布固件
+            python3 scripts/collect-release.py "$TARGET_DIR" artifacts/release --release "$SERIES" \
+              --build-info artifacts/build-info.json
+          else
+            python3 scripts/collect-release.py "$TARGET_DIR" artifacts/release --release "$SERIES" --build-info artifacts/build-info.json \
+              --package-source "$SOURCE_DIR" \
+              --package-archive "openwrt-${VERSION}-${SERIES}-packages.tar.zst"
+          fi
 
       - name: Upload firmware and release attachments
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -198,6 +204,16 @@ jobs:
           path: artifacts/release/
           if-no-files-found: error
           compression-level: 0
+          retention-days: 30
+
+      - name: Upload built package ipks (safety net)
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: packages-raw-${{ matrix.version }}-${{ github.run_number }}-${{ github.run_attempt }}
+          path: ${{ env.SOURCE_DIR }}/bin/packages/aarch64_cortex-a53/**/*.ipk
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Upload complete matching package repositories
